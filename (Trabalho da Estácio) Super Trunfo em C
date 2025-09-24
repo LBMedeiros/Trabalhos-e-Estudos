@@ -23,11 +23,11 @@ int main() {
 
   // Baralho de exemplo
   Carta baralho[NUM_CARTAS] = {
-    {"Dragão", {90, 60, 70}},
-    {"Unicórnio", {40, 80, 90}},
-    {"Fênix", {70, 90, 80}},
-    {"Grifo", {80, 70, 60}},
-    {"Minotauro", {85, 50, 50}}
+    {"Guerreiro", {90, 60, 70}},
+    {"Mago", {40, 80, 90}},
+    {"Assassino", {70, 90, 80}},
+    {"Atirador", {80, 70, 60}},
+    {"Tanque", {85, 50, 50}}
   };
 
   char jogar_novamente;
