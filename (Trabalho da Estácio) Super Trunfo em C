@@ -1,0 +1,75 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+
+#define NUM_CARTAS 5
+#define NUM_ATRIBUTOS 3
+
+typedef struct {
+  char nome[30];
+  int atributos[NUM_ATRIBUTOS]; // Ex: [força, velocidade, inteligência]
+} Carta;
+
+void mostrar_carta(Carta c) {
+  printf("Nome: %s\n", c.nome);
+  printf("1. Força: %d\n", c.atributos[0]);
+  printf("2. Velocidade: %d\n", c.atributos[1]);
+  printf("3. Inteligência: %d\n", c.atributos[2]);
+}
+
+int main() {
+  srand(time(NULL));
+
+  // Baralho de exemplo
+  Carta baralho[NUM_CARTAS] = {
+    {"Dragão", {90, 60, 70}},
+    {"Unicórnio", {40, 80, 90}},
+    {"Fênix", {70, 90, 80}},
+    {"Grifo", {80, 70, 60}},
+    {"Minotauro", {85, 50, 50}}
+  };
+
+  char jogar_novamente;
+  do {
+    // Sorteia cartas para jogador e computador
+    int idx_jogador = rand() % NUM_CARTAS;
+    int idx_computador;
+    do {
+      idx_computador = rand() % NUM_CARTAS;
+    } while (idx_computador == idx_jogador);
+
+    Carta jogador = baralho[idx_jogador];
+    Carta computador = baralho[idx_computador];
+
+    printf("Sua carta:\n");
+    mostrar_carta(jogador);
+
+    int escolha;
+    printf("Escolha um atributo para disputar (1-Força, 2-Velocidade, 3-Inteligência): ");
+    scanf("%d", &escolha);
+    escolha--; // Ajusta para índice 0
+
+    printf("\nCarta do computador:\n");
+    mostrar_carta(computador);
+
+    printf("\nResultado:\n");
+    if (jogador.atributos[escolha] > computador.atributos[escolha]) {
+      printf("Você venceu!\n");
+    } else if (jogador.atributos[escolha] < computador.atributos[escolha]) {
+      printf("Você perdeu!\n");
+    } else {
+      printf("Empate!\n");
+    }
+
+    printf("\nDeseja jogar novamente? (s/n): ");
+    // Limpa o buffer do teclado antes de ler o próximo caractere
+    do {
+      jogar_novamente = getchar();
+    } while (jogar_novamente != 's' && jogar_novamente != 'n');
+
+  } while (jogar_novamente == 's');
+
+  printf("Obrigado por jogar!\n");
+  return 0;
+}
