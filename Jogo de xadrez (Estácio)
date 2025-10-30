@@ -1,0 +1,296 @@
+//Jogo de Xadrez
+
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <locale.h>
+
+typedef struct {
+  char type;   // 'P','R','N','B','Q','K' or 0 for empty
+  int color;   // 1 = branco, -1 = preto, 0 = vazio
+} Piece;
+
+Piece board[8][8];
+
+const char *symbol_of(Piece p) {
+  if (p.color == 0) return " . ";
+  if (p.color == 1) { // branco
+    switch (p.type) {
+      case 'K': return " ♔ ";
+      case 'Q': return " ♕ ";
+      case 'R': return " ♖ ";
+      case 'B': return " ♗ ";
+      case 'N': return " ♘ ";
+      case 'P': return " ♙ ";
+    }
+  } else { // preto
+    switch (p.type) {
+      case 'K': return " ♚ ";
+      case 'Q': return " ♛ ";
+      case 'R': return " ♜ ";
+      case 'B': return " ♝ ";
+      case 'N': return " ♞ ";
+      case 'P': return " ♟ ";
+    }
+  }
+  return " ? ";
+}
+
+void set_piece(int r, int c, char type, int color) {
+  board[r][c].type = type;
+  board[r][c].color = color;
+}
+
+void init_board() {
+  // Zera tudo
+  for (int r = 0; r < 8; ++r)
+    for (int c = 0; c < 8; ++c)
+      board[r][c].type = 0, board[r][c].color = 0;
+
+  // Preto (top, linha 0 e 1)
+  set_piece(0,0,'R',-1); set_piece(0,1,'N',-1); set_piece(0,2,'B',-1); set_piece(0,3,'Q',-1);
+  set_piece(0,4,'K',-1); set_piece(0,5,'B',-1); set_piece(0,6,'N',-1); set_piece(0,7,'R',-1);
+  for (int c = 0; c < 8; ++c) set_piece(1,c,'P',-1);
+
+  // Branco (bottom, linha 7 e 6)
+  set_piece(7,0,'R',1); set_piece(7,1,'N',1); set_piece(7,2,'B',1); set_piece(7,3,'Q',1);
+  set_piece(7,4,'K',1); set_piece(7,5,'B',1); set_piece(7,6,'N',1); set_piece(7,7,'R',1);
+  for (int c = 0; c < 8; ++c) set_piece(6,c,'P',1);
+}
+
+void print_board() {
+  printf("\n    a  b  c  d  e  f  g  h\n");
+  printf("  +------------------------+\n");
+  for (int r = 0; r < 8; ++r) {
+    printf("%d |", 8 - r);
+    for (int c = 0; c < 8; ++c) {
+      printf("%s", symbol_of(board[r][c]));
+    }
+    printf("| %d\n", 8 - r);
+  }
+  printf("  +------------------------+\n");
+  printf("    a  b  c  d  e  f  g  h\n\n");
+}
+
+int in_bounds(int r, int c) {
+  return r >= 0 && r < 8 && c >= 0 && c < 8;
+}
+
+int parse_square(const char *s, int *r, int *c) {
+  // aceita formatos "e2" ou com espaço tratado externamente
+  if (!s || strlen(s) < 2) return 0;
+  char file = tolower(s[0]);
+  char rank = s[1];
+  if (file < 'a' || file > 'h') return 0;
+  if (rank < '1' || rank > '8') return 0;
+  *c = file - 'a';
+  *r = 8 - (rank - '0'); // '1' -> r=7, '8'->r=0
+  return 1;
+}
+
+int clear_path(int r1, int c1, int r2, int c2) {
+  int dr = (r2 > r1) ? 1 : (r2 < r1) ? -1 : 0;
+  int dc = (c2 > c1) ? 1 : (c2 < c1) ? -1 : 0;
+  int r = r1 + dr, c = c1 + dc;
+  while (r != r2 || c != c2) {
+    if (board[r][c].color != 0) return 0;
+    r += dr; c += dc;
+  }
+  return 1;
+}
+
+int is_valid_move(int r1, int c1, int r2, int c2, int turn_color) {
+  if (!in_bounds(r1,c1) || !in_bounds(r2,c2)) return 0;
+  Piece p = board[r1][c1];
+  Piece dest = board[r2][c2];
+  if (p.color == 0) return 0;
+  if (p.color != turn_color) return 0;
+  if (dest.color == turn_color) return 0; // não captura próprio
+  int dr = r2 - r1;
+  int dc = c2 - c1;
+
+  switch (p.type) {
+    case 'P': {
+      int dir = (p.color == 1) ? -1 : 1; // branco sobe (r diminui)
+      // avanço simples
+      if (dc == 0 && dr == dir && dest.color == 0) return 1;
+      // avanço duplo na casa inicial
+      if (dc == 0 && dr == 2*dir && dest.color == 0) {
+        int start_row = (p.color == 1) ? 6 : 1;
+        if (r1 == start_row && board[r1+dir][c1].color == 0) return 1;
+      }
+      // captura diagonal
+      if (abs(dc) == 1 && dr == dir && dest.color == -turn_color) return 1;
+      return 0;
+    }
+    case 'N': {
+      if ((abs(dr) == 2 && abs(dc) == 1) || (abs(dr) == 1 && abs(dc) == 2)) return 1;
+      return 0;
+    }
+    case 'B': {
+      if (abs(dr) == abs(dc) && abs(dr) > 0) return clear_path(r1,c1,r2,c2);
+      return 0;
+    }
+    case 'R': {
+      if ((dr == 0 && dc != 0) || (dc == 0 && dr != 0)) return clear_path(r1,c1,r2,c2);
+      return 0;
+    }
+    case 'Q': {
+      if ((abs(dr) == abs(dc) && abs(dr) > 0) || (dr == 0 && dc != 0) || (dc == 0 && dr != 0))
+        return clear_path(r1,c1,r2,c2);
+      return 0;
+    }
+    case 'K': {
+      if (abs(dr) <= 1 && abs(dc) <= 1) return 1;
+      return 0;
+    }
+    default:
+      return 0;
+  }
+}
+
+// verifica se a peça em (r1,c1) pode atacar a casa (r2,c2) (ignora turno)
+int can_attack(int r1, int c1, int r2, int c2) {
+  if (!in_bounds(r1,c1) || !in_bounds(r2,c2)) return 0;
+  Piece p = board[r1][c1];
+  if (p.color == 0) return 0;
+  int dr = r2 - r1;
+  int dc = c2 - c1;
+
+  switch (p.type) {
+    case 'P': {
+      int dir = (p.color == 1) ? -1 : 1;
+      // ataque diagonal (não considera se há peça na casa, para checar rei)
+      if (dr == dir && abs(dc) == 1) return 1;
+      return 0;
+    }
+    case 'N': {
+      if ((abs(dr) == 2 && abs(dc) == 1) || (abs(dr) == 1 && abs(dc) == 2)) return 1;
+      return 0;
+    }
+    case 'B': {
+      if (abs(dr) == abs(dc) && abs(dr) > 0) return clear_path(r1,c1,r2,c2);
+      return 0;
+    }
+    case 'R': {
+      if ((dr == 0 && dc != 0) || (dc == 0 && dr != 0)) return clear_path(r1,c1,r2,c2);
+      return 0;
+    }
+    case 'Q': {
+      if ((abs(dr) == abs(dc) && abs(dr) > 0) || (dr == 0 && dc != 0) || (dc == 0 && dr != 0))
+        return clear_path(r1,c1,r2,c2);
+      return 0;
+    }
+    case 'K': {
+      if (abs(dr) <= 1 && abs(dc) <= 1) return 1;
+      return 0;
+    }
+    default:
+      return 0;
+  }
+}
+
+// verifica se o rei da cor 'color' está em xeque
+int is_in_check(int color) {
+  int kr = -1, kc = -1;
+  for (int r = 0; r < 8; ++r) {
+    for (int c = 0; c < 8; ++c) {
+      if (board[r][c].type == 'K' && board[r][c].color == color) {
+        kr = r; kc = c;
+        break;
+      }
+    }
+    if (kr != -1) break;
+  }
+  if (kr == -1) return 0; // rei não existe (já capturado)
+  for (int r = 0; r < 8; ++r) {
+    for (int c = 0; c < 8; ++c) {
+      if (board[r][c].color == -color) {
+        if (can_attack(r,c,kr,kc)) return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+void make_move(int r1, int c1, int r2, int c2) {
+  Piece p = board[r1][c1];
+  board[r2][c2] = p;
+  board[r1][c1].type = 0;
+  board[r1][c1].color = 0;
+  // promoção simples: promove para rainha ao alcançar a última linha
+  if (p.type == 'P') {
+    if ((p.color == 1 && r2 == 0) || (p.color == -1 && r2 == 7)) {
+      board[r2][c2].type = 'Q';
+      // mensagem
+      if (p.color == 1) printf("Peão branco promoveu para Rainha!\n");
+      else printf("Peão preto promoveu para Rainha!\n");
+    }
+  }
+}
+
+int king_exists(int color) {
+  for (int r = 0; r < 8; ++r)
+    for (int c = 0; c < 8; ++c)
+      if (board[r][c].type == 'K' && board[r][c].color == color) return 1;
+  return 0;
+}
+
+int main() {
+  setlocale(LC_CTYPE, "");
+  init_board();
+  int turno = 1; // 1 branco, -1 preto
+  char entrada[100];
+  printf("Jogo de Xadrez (português). Digite jogadas no formato 'e2 e4' ou 'sair' para terminar.\n");
+  while (1) {
+    print_board();
+    if (!king_exists(1)) { printf("Rei branco capturado. Preto vence!\n"); break; }
+    if (!king_exists(-1)) { printf("Rei preto capturado. Branco vence!\n"); break; }
+
+    if (turno == 1) printf("Vez: Jogador Branco (♙)\n");
+    else printf("Vez: Jogador Preto (♟)\n");
+    printf("Jogada (ex: e2 e4) ou 'sair': ");
+    if (!fgets(entrada, sizeof(entrada), stdin)) break;
+    // remove newline
+    entrada[strcspn(entrada, "\r\n")] = 0;
+    if (strcmp(entrada, "sair") == 0 || strcmp(entrada, "Sair") == 0) {
+      printf("Jogo terminado pelo usuário.\n");
+      break;
+    }
+    // separar tokens
+    char s1[10] = "", s2[10] = "";
+    int scanned = sscanf(entrada, " %9s %9s", s1, s2);
+    if (scanned < 2) {
+      // talvez sem espaço: "e2e4"
+      if (strlen(entrada) == 4) {
+        strncpy(s1, entrada, 2); s1[2] = 0;
+        strncpy(s2, entrada+2, 2); s2[2] = 0;
+        scanned = 2;
+      } else {
+        printf("Formato inválido. Use 'e2 e4' ou 'e2e4'.\n");
+        continue;
+      }
+    }
+    int r1,c1,r2,c2;
+    if (!parse_square(s1,&r1,&c1) || !parse_square(s2,&r2,&c2)) {
+      printf("Casas inválidas. Use colunas a-h e linhas 1-8.\n");
+      continue;
+    }
+    if (!is_valid_move(r1,c1,r2,c2, turno)) {
+      printf("Movimento inválido.\n");
+      continue;
+    }
+    // executar
+    make_move(r1,c1,r2,c2);
+
+    // Aviso de xeque ao rei adversário (antes de trocar o turno)
+    if (is_in_check(-turno)) {
+      if (-turno == 1) printf("Xeque ao Rei Branco!\n");
+      else printf("Xeque ao Rei Preto!\n");
+    }
+
+    turno = -turno;
+  }
+  return 0;
+}
