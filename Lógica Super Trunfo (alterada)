@@ -1,0 +1,135 @@
+//Alterei as cartas do Super trunfo para cidades, assim como foi pedido no trabalho e coloquei para ser uma rodada com melhor de 3. Segue abaixo o código!
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+
+#define NUM_CIDADES 6
+
+// Estrutura para armazenar os dados da cidade
+typedef struct {
+    int codigo;
+    char nome[50];
+    long int populacao;
+    float area;
+    float pib;
+    char ponto_turistico[100];
+} Cidade;
+
+// Função para exibir informações da cidade
+void mostrarCidade(Cidade c) {
+    printf("Código: %d\n", c.codigo);
+    printf("Cidade: %s\n", c.nome);
+    printf("População: %ld\n", c.populacao);
+    printf("Área: %.2f km²\n", c.area);
+    printf("PIB: R$ %.2f bilhões\n", c.pib);
+    printf("Ponto turístico: %s\n", c.ponto_turistico);
+}
+
+// Função principal
+int main() {
+    srand(time(NULL));
+
+    Cidade cidades[NUM_CIDADES] = {
+        {1, "Rio de Janeiro", 6748000, 1200.27, 400.5, "Cristo Redentor"},
+        {2, "São Paulo", 12330000, 1521.11, 699.3, "Avenida Paulista"},
+        {3, "Belo Horizonte", 2523000, 331.4, 102.8, "Praça da Liberdade"},
+        {4, "Salvador", 2887000, 693.8, 78.5, "Pelourinho"},
+        {5, "Curitiba", 1964000, 435.0, 92.3, "Jardim Botânico"},
+        {6, "Fortaleza", 2687000, 314.9, 65.4, "Praia do Futuro"}
+    };
+
+    int jogarNovamente = 1;
+
+    while (jogarNovamente == 1) {
+        int rodada = 1;
+        int pontosJogador = 0, pontosComputador = 0;
+
+        printf("\n===== JOGO DE CARTAS - CIDADES DO BRASIL =====\n\n");
+
+        while (rodada <= 3) {
+            printf("=== Rodada %d ===\n", rodada);
+
+            int cartaJogador = rand() % NUM_CIDADES;
+            int cartaComputador = rand() % NUM_CIDADES;
+
+            // Evita que a mesma carta seja sorteada para os dois
+            while (cartaComputador == cartaJogador) {
+                cartaComputador = rand() % NUM_CIDADES;
+            }
+
+            printf("\nSua carta:\n");
+            mostrarCidade(cidades[cartaJogador]);
+
+            printf("\nEscolha o atributo para competir:\n");
+            printf("1 - População\n2 - Área\n3 - PIB\n");
+            int escolha;
+            printf("Opção: ");
+            scanf("%d", &escolha);
+
+            printf("\nCarta do computador:\n");
+            mostrarCidade(cidades[cartaComputador]);
+            printf("\n");
+
+            float valorJogador, valorComputador;
+
+            switch (escolha) {
+                case 1:
+                    valorJogador = cidades[cartaJogador].populacao;
+                    valorComputador = cidades[cartaComputador].populacao;
+                    printf("Comparando População...\n");
+                    break;
+                case 2:
+                    valorJogador = cidades[cartaJogador].area;
+                    valorComputador = cidades[cartaComputador].area;
+                    printf("Comparando Área...\n");
+                    break;
+                case 3:
+                    valorJogador = cidades[cartaJogador].pib;
+                    valorComputador = cidades[cartaComputador].pib;
+                    printf("Comparando PIB...\n");
+                    break;
+                default:
+                    printf("Opção inválida! Você perdeu a rodada.\n");
+                    valorJogador = 0;
+                    valorComputador = 1;
+            }
+
+            if (valorJogador > valorComputador) {
+                printf("\nVocê venceu a rodada!\n");
+                pontosJogador++;
+                printf("Ponto turístico da cidade vencedora: %s\n", cidades[cartaJogador].ponto_turistico);
+            } else if (valorJogador < valorComputador) {
+                printf("\nO computador venceu a rodada!\n");
+                pontosComputador++;
+                printf("Ponto turístico da cidade vencedora: %s\n", cidades[cartaComputador].ponto_turistico);
+            } else {
+                printf("\nEmpate!\n");
+            }
+
+            printf("\nPlacar: Você %d x %d Computador\n", pontosJogador, pontosComputador);
+            printf("------------------------------------\n\n");
+
+            rodada++;
+        }
+
+        printf("\n===== RESULTADO FINAL =====\n");
+        if (pontosJogador > pontosComputador) {
+            printf("Parabéns! Você venceu o jogo!\n");
+        } else if (pontosJogador < pontosComputador) {
+            printf("O computador venceu o jogo.\n");
+        } else {
+            printf("O jogo terminou empatado!\n");
+        }
+
+        printf("\nDeseja jogar novamente? (1 - Sim / 0 - Não): ");
+        scanf("%d", &jogarNovamente);
+
+        if (jogarNovamente != 1) {
+            printf("\nObrigado por jogar! Até a próxima!\n");
+        }
+    }
+
+    return 0;
+}
