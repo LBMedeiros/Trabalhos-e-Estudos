@@ -1,0 +1,221 @@
+//Jogo de Batalha Naval
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <ctype.h>
+
+#define N 10
+
+/* Células:
+   0 = água
+   1 = parte de navio não atingida
+   2 = parte de navio atingida
+   3 = tiro em água (miss)
+*/
+
+typedef struct {
+    int size;
+    char *name;
+} ShipType;
+
+ShipType shipTypes[] = {
+    {5, "Porta-aviões"},
+    {4, "Navio-tanque"},
+    {3, "Contratorpedeiro"},
+    {3, "Submarino"},
+    {2, "Canoeiro"}
+};
+const int SHIP_COUNT = sizeof(shipTypes)/sizeof(shipTypes[0]);
+
+void clear_board(int b[N][N]) {
+    for (int i=0;i<N;i++) for (int j=0;j<N;j++) b[i][j]=0;
+}
+
+void print_coords_header() {
+    printf("   ");
+    for (int j=0;j<N;j++) printf("%2d ", j+1);
+    printf("\n");
+}
+
+void print_board_for_player(int b[N][N]) {
+    print_coords_header();
+    for (int i=0;i<N;i++) {
+        printf("%2c ", 'A'+i);
+        for (int j=0;j<N;j++) {
+            if (b[i][j] == 0) printf(" ~ ");
+            else if (b[i][j] == 1) printf(" # "); // navio visível
+            else if (b[i][j] == 2) printf(" X ");
+            else if (b[i][j] == 3) printf(" . ");
+        }
+        printf("\n");
+    }
+}
+
+void print_board_for_opponent(int b[N][N]) {
+    print_coords_header();
+    for (int i=0;i<N;i++) {
+        printf("%2c ", 'A'+i);
+        for (int j=0;j<N;j++) {
+            if (b[i][j] == 2) printf(" X ");
+            else if (b[i][j] == 3) printf(" . ");
+            else printf(" ~ ");
+        }
+        printf("\n");
+    }
+}
+
+/* checa se cabe colocar navio */
+int can_place(int b[N][N], int r, int c, int size, int orient) {
+    if (orient == 0) {
+        if (c + size > N) return 0;
+        for (int j=c;j<c+size;j++) if (b[r][j] != 0) return 0;
+        return 1;
+    } else {
+        if (r + size > N) return 0;
+        for (int i=r;i<r+size;i++) if (b[i][c] != 0) return 0;
+        return 1;
+    }
+}
+
+void place_ship(int b[N][N], int r, int c, int size, int orient) {
+    if (orient == 0)
+        for (int j=c;j<c+size;j++) b[r][j] = 1;
+    else
+        for (int i=r;i<r+size;i++) b[i][c] = 1;
+}
+
+void place_all_random(int b[N][N]) {
+    for (int s=0;s<SHIP_COUNT;s++) {
+        int size = shipTypes[s].size;
+        int placed = 0;
+        while (!placed) {
+            int r = rand()%N;
+            int c = rand()%N;
+            int orient = rand()%2;
+            if (can_place(b, r, c, size, orient)) {
+                place_ship(b, r, c, size, orient);
+                placed = 1;
+            }
+        }
+    }
+}
+
+int parse_coord(const char *s, int *r, int *c) {
+    if (!s || !s[0]) return 0;
+    int i = 0;
+    char ch = toupper(s[i]);
+    if (ch < 'A' || ch > 'A'+N-1) return 0;
+    *r = ch - 'A';
+    i++;
+    if (!isdigit((unsigned char)s[i])) return 0;
+    int num = 0;
+    while (s[i]) {
+        if (!isdigit((unsigned char)s[i])) return 0;
+        num = num*10 + (s[i]-'0');
+        i++;
+    }
+    if (num < 1 || num > N) return 0;
+    *c = num-1;
+    return 1;
+}
+
+int all_ships_sunk(int b[N][N]) {
+    for (int i=0;i<N;i++) for (int j=0;j<N;j++) if (b[i][j] == 1) return 0;
+    return 1;
+}
+
+int player_turn(int enemy[N][N]) {
+    char line[100];
+    int r,c;
+    while (1) {
+        printf("Digite coordenada para atacar (ex: A5) ou 'q' para sair: ");
+        if (!fgets(line, sizeof(line), stdin)) return 0;
+        char *p = line;
+        while (*p && isspace((unsigned char)(*p))) p++;
+        if (p[0] == 'q' || p[0] == 'Q') {
+            printf("Você saiu do jogo.\n");
+            exit(0);
+        }
+        char tmp[100]; int idx=0;
+        for (int i=0;p[i] && idx < 98;i++) if (!isspace((unsigned char)p[i])) tmp[idx++]=p[i];
+        tmp[idx]=0;
+        if (parse_coord(tmp, &r, &c)) {
+            if (enemy[r][c] == 1) {
+                enemy[r][c] = 2;
+                printf("ACERTOU! (%c%d)\n", 'A'+r, c+1);
+            } else if (enemy[r][c] == 0) {
+                enemy[r][c] = 3;
+                printf("ÁGUA. (%c%d)\n", 'A'+r, c+1);
+            } else if (enemy[r][c] == 2 || enemy[r][c] == 3) {
+                printf("Já foi mirado aí antes (%c%d).\n", 'A'+r, c+1);
+            }
+            return 1;
+        } else {
+            printf("Entrada inválida. Use uma letra A-J seguida de número 1-10 (ex: B10).\n");
+        }
+    }
+}
+
+void cpu_turn(int player[N][N]) {
+    int r,c;
+    while (1) {
+        r = rand()%N;
+        c = rand()%N;
+        if (player[r][c] == 0) {
+            player[r][c] = 3;
+            printf("CPU atira em %c%d: ÁGUA.\n", 'A'+r, c+1);
+            break;
+        } else if (player[r][c] == 1) {
+            player[r][c] = 2;
+            printf("CPU atira em %c%d: ACERTOU!\n", 'A'+r, c+1);
+            break;
+        }
+    }
+}
+
+int main() {
+    srand((unsigned int)time(NULL));
+    int player[N][N], cpu[N][N];
+    clear_board(player);
+    clear_board(cpu);
+
+    printf("=== BATALHA NAVAL (Console) ===\n\n");
+    printf("Pressione ENTER para iniciar o jogo...");
+    getchar();
+
+    place_all_random(player);
+    place_all_random(cpu);
+
+    printf("\nFrota posicionada. Boa sorte, comandante!\n\n");
+
+    while (1) {
+        printf("Seu tabuleiro:\n");
+        print_board_for_player(player);
+        printf("\nTabuleiro do inimigo (o que você vê):\n");
+        print_board_for_opponent(cpu);
+        printf("\n-- Sua vez --\n");
+        if (!player_turn(cpu)) break;
+        if (all_ships_sunk(cpu)) {
+            printf("\nParabéns — você afundou toda a frota inimiga! Você venceu!\n");
+            break;
+        }
+        printf("\n-- Vez do CPU --\n");
+        cpu_turn(player);
+        if (all_ships_sunk(player)) {
+            printf("\nA CPU afundou todos os seus navios. Você perdeu.\n");
+            break;
+        }
+        printf("\nPressione ENTER para continuar...");
+        getchar();
+    }
+
+    printf("\nPlacar final — seu tabuleiro:\n");
+    print_board_for_player(player);
+    printf("\nTabuleiro inimigo (com barcos revelados):\n");
+    print_board_for_player(cpu);
+
+    printf("\nObrigado por jogar!\n");
+    return 0;
+}
